@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:c="http://www.springframework.org/schema/c"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:int-amqp="http://www.springframework.org/schema/integration/amqp"
+	xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/integration/amqp http://www.springframework.org/schema/integration/amqp/spring-integration-amqp.xsd
+		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd
+		http://www.springframework.org/schema/rabbit http://www.springframework.org/schema/rabbit/spring-rabbit-1.1.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<!--  Establish connection to Rabbit -->
+	<!-- =================================================================================================== -->
+
+	<context:property-placeholder location="META-INF/spring/config.properties"/>
+
+	<rabbit:connection-factory id="connectionFactory"
+		host="#{systemProperties['AMQP_HOSTNAME']}"
+		port="${rabbit.port}"
+		username="${rabbit.username}"
+		password="${rabbit.password}"
+		virtual-host="globalpubsub"/>
+
+	<rabbit:admin connection-factory="connectionFactory" />
+	<rabbit:template id="amqpTemplate" connection-factory="connectionFactory" />
+	
+	<!-- Federated exchange for global pub/sub -->
+	<!-- =================================================================================================== -->
+	
+	<!-- all messages from exchanges in the upstream set (on remote brokers) will be published here 
+	     in addition to anything published locally -->
+	<rabbit:federated-exchange name="global.exchange"
+		backing-type="topic"
+		upstream-set="global">
+		<rabbit:topic-bindings>
+			<rabbit:binding queue="myPrivateQueue" pattern="#"/>
+		</rabbit:topic-bindings>
+	</rabbit:federated-exchange>
+	
+	<!-- exclusive, auto-deleted, non-durable queue with generated name -->
+	<rabbit:queue id="myPrivateQueue"/>	
+	
+	<!-- A local subscriber so that we can watch messages coming in -->
+	<!-- =================================================================================================== -->
+		
+	<beans profile="subscriber">
+		
+		<bean id="subscriber" class="org.springsource.samples.federation.Subscriber"
+			c:regionName="#{systemProperties['REGION_NAME']}"/>
+			
+		<!-- Consume messages from my private queue, showing how to set prefetch -->
+    	<rabbit:listener-container connection-factory="connectionFactory">
+	    	<rabbit:listener queues="myPrivateQueue" ref="subscriber"
+		    	method="onMessage"/>
+    	</rabbit:listener-container>
+
+	</beans>
+
+	<!-- A local publisher so that we can see messages flowing around the world -->
+	<!-- =================================================================================================== -->
+	
+	<beans profile="publisher"> 
+
+		<bean id="publisher" class="org.springsource.samples.federation.Publisher"
+			c:regionName="#{systemProperties['REGION_NAME']}"/>
+    
+    	<int:inbound-channel-adapter ref="publisher" method="createMessage" channel="toGlobalExchange">
+			<int:poller fixed-rate="1000"/>
+		</int:inbound-channel-adapter>
+
+    	<int:channel id="toGlobalExchange" />
+
+    	<int-amqp:outbound-channel-adapter channel="toGlobalExchange"
+			amqp-template="amqpTemplate" exchange-name="global.exchange" 
+			routing-key="my.distributed.topic"/>
+
+	</beans> 
+
+</beans>
