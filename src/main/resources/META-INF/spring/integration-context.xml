@@ -48,10 +48,10 @@
 		
 	<beans profile="subscriber">
 		
-		<bean id="subscriber" class="org.springsource.samples.federation.Subscriber"
-			c:regionName="#{systemProperties['REGION_NAME']}"/>
+	<bean id="subscriber" class="org.springsource.samples.federation.Subscriber"
+		c:regionName="#{systemProperties['REGION_NAME']}"/>
 			
-		<!-- Consume messages from my private queue, showing how to set prefetch -->
+	<!-- Consume messages from my private queue -->
     	<rabbit:listener-container connection-factory="connectionFactory">
 	    	<rabbit:listener queues="myPrivateQueue" ref="subscriber"
 		    	method="onMessage"/>
@@ -64,12 +64,12 @@
 	
 	<beans profile="publisher"> 
 
-		<bean id="publisher" class="org.springsource.samples.federation.Publisher"
-			c:regionName="#{systemProperties['REGION_NAME']}"/>
+	<bean id="publisher" class="org.springsource.samples.federation.Publisher"
+		c:regionName="#{systemProperties['REGION_NAME']}"/>
     
     	<int:inbound-channel-adapter ref="publisher" method="createMessage" channel="toGlobalExchange">
-			<int:poller fixed-rate="1000"/>
-		</int:inbound-channel-adapter>
+		<int:poller fixed-rate="1000"/>
+	</int:inbound-channel-adapter>
 
     	<int:channel id="toGlobalExchange" />
 
