@@ -4,12 +4,16 @@ require 'colorize'
 puts "Messages from N. Virginia (Amazon US East) are in blue".colorize(:blue)
 puts "Messages from Ireland (Amazon EU West) are in green".colorize(:green)
 
-ARGF.each do |line|
-  if line =~ /.*from US East.*/ 
-    print line.colorize( :blue )
-  elsif line =~ /.from EU West.*/ 
-    print line.colorize( :green )
-  else
-    puts line
+begin
+  ARGF.each do |line|
+    if line =~ /.*from US East.*/ 
+      print line.colorize( :blue )
+    elsif line =~ /.from EU West.*/ 
+      print line.colorize( :green )
+    else
+      puts line
+    end
   end
+rescue Interrupt
+  # handle Ctrl-C nicely
 end
