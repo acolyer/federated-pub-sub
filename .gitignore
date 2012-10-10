@@ -3,3 +3,7 @@ gradle.properties
 .gradle
 node_modules
 *~
+.project
+.settings
+.classpath
+bin
